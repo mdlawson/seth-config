@@ -1,0 +1,109 @@
+#!/bin/bash
+# created and maintained by cyberwalrus
+
+. /etc/rc.conf
+. /etc/rc.d/functions
+
+daemon_name="source-server"
+run_dir=/var/run/srcds
+socket=/var/run/srcds/socket
+pid_file=/var/run/srcds/pid
+
+run_user=srcds
+run_group=srcds
+
+srcds_bin=/usr/bin/srcds
+srcds_dir=/srv/srcds/
+srcds_config_dir=/etc/srcds
+backup_dir=/srv/srcds/backups/
+
+expect_script=/srv/srcds/bin/expects
+
+send_to_console () {
+	$expect_script $socket "$1" "$2" > /dev/null
+	if [ $? -ne 0 ] ; then
+		return 1
+	fi
+}
+
+check_status () {
+	if [[ -a "$socket" ]]; then
+		return 0
+	else
+		rm_daemon source-server
+		return 1
+	fi
+}
+
+case "$1" in
+	start)
+		stat_busy "Starting $daemon_name"
+		if [[ ! -a $socket ]]; then
+			cd "$srcds_dir"
+			if [[ ! -d "$run_dir" ]]; then
+				install -m775 -d "$run_dir"
+				chown $run_user:$run_group "$run_dir"
+			fi
+			cfg_file=/etc/srcds/garrysmod
+			su $run_user -s /bin/bash -c "source /etc/profile &&
+				detachtty --pid-file $pid_file $socket $srcds_bin $cfg_file > /dev/null" > /dev/null && 
+			chmod 770 "$socket" &&
+			add_daemon source-server &&
+			stat_done || stat_fail
+		else	
+			echo "$daemon_name is already running"
+			stat_fail
+			exit 0
+		fi
+		;;
+	stop)
+		stat_busy "Stopping $daemon_name"
+		if check_status; then
+			send_to_console quit Quit > /dev/null &&
+			rm_daemon source-server && stat_done || stat_fail
+		else
+			echo "$daemon_name is not running"
+			stat_fail
+		fi
+		;;
+	forcestop)
+		stat_busy "Killing $daemon_name"
+		if check_status; then
+			ppid=$(cat $pid_file); cpids=$(pgrep -P $ppid)
+			jpid=$(pgrep -P $cpids)
+			(sleep 5 && kill -KILL $jpid > /dev/null &)
+			kill -TERM $jpid > /dev/null &&
+			sleep 5
+			rm $socket &&
+			rm_daemon source-server && stat_done || stat_fail
+		else
+			echo "$daemon_name is not running"
+			stat_fail
+		fi
+		;;
+	restart) 
+		stat_busy "Restarting $daemon_name"
+		send_to_console exit > /dev/null
+		stat_done
+		;;
+	
+	status)
+                stat_busy "checking $daemon_name status"
+                check_status && stat_done || stat_fail
+                ;;
+	backup)
+		stat_busy "Backing up"
+		check_status && send_to_console save-all complete && send_to_console save-off Disabling && send_to_console "say Backing up.." > /dev/null
+		rdiff-backup $bukkit_dir$world_name $backup_dir$world_name 
+		check_status && send_to_console save-on Enabling && send_to_console "say Backed up!" > /dev/null
+		stat_done 
+		;;
+	send)
+		send_to_console "$2" "$3"
+		;;
+	*)
+		echo "usage: $0 {start|[force]stop|restart|status|backup|send}"
+esac
+
+exit 0
+

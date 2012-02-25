@@ -1,0 +1,25 @@
+#!/usr/bin/expect
+
+set socket [lindex $argv 0]
+set input [lindex $argv 1]
+set output [lindex $argv 2]
+
+spawn attachtty $socket
+sleep 1
+send "$input\n"
+sleep 1
+if { $output != "" } {
+        expect {
+                "$output" {
+                        sleep 1
+                        exit 0
+                }
+                default {
+                        sleep 1
+                        exit 1
+                }
+        }
+} else {
+        exit 0
+}
+

@@ -1,0 +1,4 @@
+[srcds]
+title=srcds
+description= Srcds Ports
+ports=27000:27019/tcp|27020:27050/udp

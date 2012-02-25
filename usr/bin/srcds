@@ -1,0 +1,6 @@
+#!/bin/bash
+srcds_bin=/srv/srcds/orangebox/srcds_run
+srcds_dir=/srv/srcds/orangebox
+. $1
+cd $srcds_dir
+$srcds_bin -autoupdate -game $GAME -norestart +ip 188.227.180.199 -port $PORT +maxplayers $PLAYERS +map $MAP +exec $CFG

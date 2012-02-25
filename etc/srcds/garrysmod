@@ -1,0 +1,6 @@
+GAME="garrysmod"
+PORT="27015"
+MAP="freespace06_v2-a"
+PLAYERS="16"
+CFG="server.cfg"
+
